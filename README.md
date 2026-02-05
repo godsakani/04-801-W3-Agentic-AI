@@ -137,7 +137,7 @@ alumni-rag-agent/
 ├── requirements.txt          # Dependencies
 ├── .env.example              # Environment template
 └── README.md
-├── technical_brief.md        # Technical Brief Report
+├── technical_brief_report.md        # Technical Brief Report
 ```
 
 ## LangSmith Tracing
@@ -150,7 +150,7 @@ View traces at: https://smith.langchain.com/
 
 - [ ] Project-Integrated Code 
 - [ ] Implementation Trace (export from LangSmith)
-- [ ] Technical Brief (use `technical_brief_template.md`)
+- [ ] Technical Brief (use `technical_brief_report.md`)
 
 ## Pending Tasks
 
