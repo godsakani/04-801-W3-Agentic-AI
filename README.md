@@ -16,18 +16,17 @@ The system implements a **ReAct (Reason+Act)** loop with the following tool veri
 
 | Tool | Status | Description |
 |------|--------|-------------|
-| **Google Search** | ✅ REAL | Uses Google Custom Search API for discovery |
-| **Email Sender** | ✅ REAL | Uses `smtplib` for actual email delivery |
-| **LinkedIn Tool** | ⚠️ SIMULATED | Returns mock profile data (demo mode) |
-| **Survey Tool** | ⚠️ SIMULATED | Generates mock Google Form URLs |
+| **Google Search** |  Completed but Not Used |Intended for Google Custom Search API for discovery but API is disabled by Google |
+| **Email Sender** | Completed and Used | Uses `smtplib` for actual email delivery |
+| **LinkedIn Tool** | Completed but Not Used | This was to format the LinkedIn profile data to be used by the agent from Google Search |
+| **Survey Tool** | Completed but Not Used | This requires the use of Google Forms API which is not available for use |
 
 ```
-
-```
+--------
 ┌─────────────────────────────────────────────────────────┐
-│                    AGENT LOOP                            │
+│                    AGENT LOOP                           │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │ OBSERVE → REASON → DECIDE → ACT → UPDATE → LOOP │   │
+│  │ OBSERVE → REASON → DECIDE → ACT → UPDATE → LOOP  │   │
 │  └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
          │              │              │
@@ -36,21 +35,29 @@ The system implements a **ReAct (Reason+Act)** loop with the following tool veri
    │ RETRIEVAL│   │  TOOLS   │   │  VERIFY  │
    │  MODULE  │   │  MODULE  │   │  MODULE  │
    └──────────┘   └──────────┘   └──────────┘
-```
+
+-----
 
 ## Setup
 
-### 1. Install Dependencies
+### 1. Setting Virtual Environment
+
+```bash
+ Create virtual environment
+python -m venv venv
+
+```
+
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
-
-Copy `.env.example` to `.env` and fill in your keys:
+### 3. Configure Environment
 
 ```bash
+# Copy .env.example to .env and fill in your keys
 cp .env.example .env
 ```
 
@@ -64,7 +71,7 @@ Required variables:
 - `SMTP_USER` - SMTP Username
 - `SMTP_PASSWORD` - SMTP App Password
 
-### 3. Setup MongoDB Atlas
+### 4. Setup MongoDB Atlas
 
 1. Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
 2. Create database `alumni_db` with collection `alumni_vectors`
@@ -123,11 +130,10 @@ alumni-rag-agent/
 │   └── verification/
 │       ├── __init__.py
 │       └── groundedness.py   # Groundedness scorer
-├── scripts/                   # Standalone script implementations
-├── references/                # Documentation guides
-├── assets/                    # Templates
 ├── notebooks/
-├── project.ipynb             # Demo notebook
+│   ├── agent_excute.ipynb    # Agent Execution Notebook for running the agent
+│   ├── project.ipynb             # Project Technical Notebook
+│   ├── useful.ipynb          # Contains useful code snippets and functions
 ├── config.yaml               # Configuration
 ├── requirements.txt          # Dependencies
 ├── .env.example              # Environment template
@@ -142,9 +148,18 @@ View traces at: https://smith.langchain.com/
 
 ## HW2 Deliverables
 
-- [x] Project-Integrated Code (this repository)
+- [ ] Project-Integrated Code 
 - [ ] Implementation Trace (export from LangSmith)
-- [ ] Technical Brief (use `assets/technical_brief_template.md`)
+- [ ] Technical Brief (use `technical_brief_template.md`)
+
+## Pending Tasks
+
+- [ ] Search for alternative data scraping tools, sources for Alumni data
+- [ ] Intergrate survey tool with Google Forms API
+- [ ] Update the search tool as google custom search API and scraping of data from the web disabled
+- [ ]  Add more tools to the agent such as analytics tools
+- [ ] Implement Authentication and Authorization for the system access
+- [ ]  Implement Complete dashboard for CMU Africa admin to interact with the agent
 
 ## License
 
