@@ -1,8 +1,11 @@
 # Technical Brief: Alumni RAG Agent
 
 **Course**: 04-801-W3 Agentic AI: Fundamentals and Applications
+
 **Assignment**: HW2 - Building the Agent
-**Team **: Team 8
+
+**Team**: Team 8
+
 **Date**: February 2026
 
 ---

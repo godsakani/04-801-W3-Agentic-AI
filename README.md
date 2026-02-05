@@ -1,6 +1,6 @@
 # Alumni RAG Agent
 
-A RAG-enabled agentic system for CMU Africa Alumni Tracking and Support.
+This document describes the implementation of a RAG-enabled agent for the **CMU Africa Alumni Tracking and Support System**. The system automates the process of discovering alumni career updates and initiating personalized outreach.
 
 ## Overview
 
