@@ -19,7 +19,7 @@ from src.retrieval.mongodb_vector import AlumniVectorStore
 from src.tools.linkedin import create_linkedin_tool
 from src.tools.email import create_email_tool
 from src.tools.survey import create_survey_tool
-from src.tools.google_search import create_linkedin_discovery_tool
+from src.tools.tavily_search import create_tavily_tool
 # from src.tools.duck_search import create_linkedin_discovery_tool
 from src.verification.groundedness import GroundednessScorer, GroundednessResult, handle_verification
 
@@ -332,7 +332,7 @@ class AlumniAgent:
             "email_sender": create_email_tool(),
             "linkedin_scraper": create_linkedin_tool(),
             "survey_tool": create_survey_tool(),
-            "linkedin_discovery": create_linkedin_discovery_tool()
+            "linkedin_discovery": create_tavily_tool()
         }
         logger.info("✓ Tools initialized: email_sender, linkedin_scraper, survey_tool, linkedin_discovery")
         
@@ -467,29 +467,99 @@ class AlumniAgent:
         
         # Step 1: Discover profiles using Google Search
         discovery_tool = self.tools["linkedin_discovery"]
-        discovery_result = discovery_tool.invoke({
-            "program": program,
-            "graduation_year": year,
-            "max_results": 5
-        })
+        # Construct a search query for Tavily
+        # e.g. "site:linkedin.com Carnegie Mellon University Africa MSIT 2023"
+        search_query = f"site:linkedin.com Carnegie Mellon University Africa {program} {year}"
         
-        if not discovery_result.get("success"):
-            logger.error(f"Discovery failed: {discovery_result.get('error')}")
-            return []
-            
-        profiles = discovery_result.get("profiles", [])
-        logger.info(f"Found {len(profiles)} potential profiles")
+        discovery_result = discovery_tool.invoke(search_query)
         
-        # Step 2: Scrape and Ingest found profiles
-        # We extract just the URLs from the discovery result
-        linkedin_urls = [p["linkedin_url"] for p in profiles]
+        # The Tavily tool returns a list of formatted string snippets, not a dictionary with "profiles"
+        # So discovery_tool.invoke returns List[str] directly.
         
-        if not linkedin_urls:
-            logger.warning("No profiles found to ingest.")
-            return []
+        raw_results = discovery_result 
+        if not raw_results or isinstance(raw_results, str) and "Error" in raw_results:
+             logger.error(f"Discovery failed or empty: {raw_results}")
+             return []
+             
+        # "profiles" in this variable name implies user personas, but here it's just text snippets
+        profiles = raw_results 
+        logger.info(f"Found {len(profiles)} search result snippets")
+        
+        # Step 2: Use LLM to Parse Structure (replacing the old scrape loop)
+        # We process the text directly because Tavily gives us the content.
             
         # Re-use our existing scrape pipeline
-        return self.scrape_and_ingest(linkedin_urls)
+        # return self.scrape_and_ingest(linkedin_urls)
+        
+        # NOTE: Since Tavily gives us raw content directly, we can skip the specialized scraper 
+        # for now and use LLM to extract profile data directly from the search snippets.
+        # This is more robust than scraping URLs which blocks bots.
+        
+        ingested_profiles = []
+        import json
+        
+        # Combine all search results into one context block for the LLM
+        # profiles here contains string snippets from our tavily tool wrapper
+        search_context = "\n---\n".join([str(p) for p in profiles])
+        
+        extraction_prompt = f"""You are an alumni tracking agent for CMU Africa. 
+Given the raw search results below, extract structured Alumni profile data.
+
+Search Results:
+{search_context}
+
+Return a single JSON object with a key "profiles" containing a list of objects in this exact format:
+{{
+    "profiles": [
+        {{
+            "id": "generate_unique_id",
+            "name": "Full Name",
+            "email": "generate_email_from_name@alumni.cmu.edu",
+            "graduation_year": {year},
+            "program": "{program}",
+            "linkedin_url": "URL from text",
+            "current_position": "Job Title",
+            "company": "Company Name",
+            "location": "City, Country",
+            "skills": ["Python", "MongoDB", "Machine Learning"],
+            "career_history": [
+                {{"title": "Job Title", "company": "Company", "years": "Year-Year"}}
+            ]
+        }}
+    ]
+}}
+
+If information is missing, use "Unknown" or empty list.
+Ensure valid JSON output.
+"""
+
+        try:
+            # Call the LLM (using the agent's LLM instance)
+            result = self.react_agent.llm.invoke(extraction_prompt)
+            content = result.content.strip()
+            
+            # Clean markdown JSON blocks
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].strip()
+                
+            parsed_data = json.loads(content)
+            extracted_profiles = parsed_data.get("profiles", [])
+            
+            logger.info(f"Extracted {len(extracted_profiles)} structured profiles via LLM")
+            
+            for profile in extracted_profiles:
+                # Ingest into vector store
+                chunks = self.retrieval.ingest_profile(profile)
+                logger.info(f"  ✓ Ingested {chunks} chunks for {profile['name']}")
+                ingested_profiles.append(profile)
+                
+        except Exception as e:
+            logger.error(f"LLM Extraction failed: {e}")
+            return []
+            
+        return ingested_profiles
     
     def monitor_alumni(self, alumni_list: List[dict]) -> List[dict]:
         """
