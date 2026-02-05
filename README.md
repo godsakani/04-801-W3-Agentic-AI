@@ -16,7 +16,7 @@ The system implements a **ReAct (Reason+Act)** loop with the following tool veri
 
 | Tool | Status | Description |
 |------|--------|-------------|
-| **Google Search** |  Completed but Not Used |Intended for Google Custom Search API for discovery but API is disabled by Google |
+| **Tavily Search** | Completed and Used | Uses Tavily API for robust alumni discovery |
 | **Email Sender** | Completed and Used | Uses `smtplib` for actual email delivery |
 | **LinkedIn Tool** | Completed but Not Used | This was to format the LinkedIn profile data to be used by the agent from Google Search |
 | **Survey Tool** | Completed but Not Used | This requires the use of Google Forms API which is not available for use |
@@ -65,8 +65,7 @@ Required variables:
 - `MONGODB_URI` - MongoDB Atlas connection string
 - `OPENAI_API_KEY` - OpenAI API key
 - `LANGCHAIN_API_KEY` - LangSmith tracing key
-- `GOOGLE_API_KEY` - Google Custom Search API Key
-- `GOOGLE_CSE_ID` - Google Custom Search Engine ID
+- `TAVILY_API_KEY` - Tavily API Key (for Discovery)
 - `SMTP_HOST` - SMTP Server (e.g. smtp.gmail.com)
 - `SMTP_USER` - SMTP Username
 - `SMTP_PASSWORD` - SMTP App Password
@@ -124,6 +123,7 @@ alumni-rag-agent/
 │   │   └── mongodb_vector.py # Vector search wrapper
 │   ├── tools/
 │   │   ├── __init__.py
+│   │   ├── tavily_search.py  # Tavily search tool
 │   │   ├── linkedin.py       # LinkedIn scraper
 │   │   ├── email.py          # Email sender
 │   │   └── survey.py         # Survey tool
@@ -132,12 +132,12 @@ alumni-rag-agent/
 │       └── groundedness.py   # Groundedness scorer
 ├── notebooks/
 │   ├── agent_excute.ipynb    # Agent Execution Notebook for running the agent
-│   ├── project.ipynb             # Project Technical Notebook
 │   ├── useful.ipynb          # Contains useful code snippets and functions
 ├── config.yaml               # Configuration
 ├── requirements.txt          # Dependencies
 ├── .env.example              # Environment template
 └── README.md
+├── technical_brief.md        # Technical Brief Report
 ```
 
 ## LangSmith Tracing

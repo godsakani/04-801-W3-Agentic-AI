@@ -34,7 +34,7 @@ Maintain meaningful relationships with CMU Africa graduates by tracking their ca
 **Why necessary**: Alumni often change jobs without notifying the university. Manual tracking is unscalable. The system must autonomously discover these changes to trigger timely outreach (e.g., congratulations on a promotion).
 
 **Design decisions**:
-- **Automated Discovery**: Implemented a Google Search wrapper (`google_search.py`) to find profiles using `site:linkedin.com "CMU Africa"`. This bypasses the need for a pre-existing list of URLs.
+- **Automated Discovery**: Implemented a **Tavily Search wrapper** (`tavily_search.py`) to find profiles. This follows a more strutured and reliable method which is: "Fetch → LLM Structure" pipeline where raw search snippets are parsed by the agent's LLM into valid JSON profile schemas, bypassing the need for fragile scraping logic.
 - **Simulated Scraping**: The scraper (`linkedin.py`) uses a **simulation approach** (Mock) to return structured profile data for demo purposes, avoiding the complexity and ban-risk of live LinkedIn scraping.
 - **Change Detection**: The tool compares new scrape data against stored vector metadata to specifically identify "Job Change" or "Promotion" events.
 
@@ -81,14 +81,13 @@ Maintain meaningful relationships with CMU Africa graduates by tracking their ca
 3. **Extraction**: It parses the HTML to extract key fields: Current Job, Company, Location, and Skills.
 4. **Differentiation**: The extracted data is compared against the database. Differences trigger an "Update" or "Outreach" event.
 
-#### Google Search Tool Workflow
-1. **Trigger**: Activated for **Discovery** (finding people/URLs we don't know yet).
-2. **Querying**: The Agent translates a request into a targeted "Google Dork" query (e.g., `site:linkedin.com/in "CMU Africa" "2023"`).
-3. **Filtering**: The tool parses results to keep only valid Profile URLs, discarding general web noise.
-4. **Handoff**: The found URLs are passed to the **LinkedIn Tool** for detailed processing.
+#### Tavily Search Tool Workflow
+1.  **Trigger**: Activated for **Discovery** (finding people/URLs we don't know yet).
+2.  **Querying**: The Agent constructs a targeted query (e.g., `site:linkedin.com "CMU Africa" "MSIT" "2023"`).
+3.  **Structuring**: Instead of just getting URLs, the tool retrieves rich text snippets. The Agent sends these snippets to the LLM with a strictly typed JSON prompt to **extract** structured profile data (Name, Degree, Job) directly from the search context.
+4.  **Ingestion**: The structured JSON profiles are validated and directly ingested into the Vector Store, bypassing the need for a separate scraping step.
 
 ### 2.5 Observability & Tracing
-
 To ensure robustness and debug complexity, the system implements dual-layer observability:
 
 1.  **Local Execution Traces**:
@@ -132,9 +131,9 @@ We implemented a **Semantic Chunking** strategy for alumni profiles.
 
 | Team Member | Contributions |
 |-------------|--------------|
-| **[Name]** | **Retrieval Module**: Implemented MongoDB Atlas connection, schema design, and vector indexing. |
-| **[Name]** | **Agent Core & Tools**: Built the ReAct loop, integrated Google Search discovery, and implemented the Email/LinkedIn tools. |
-| **[Name]** | **Verification & Testing**: Developed `groundedness.py`, wrote unit tests, and created the system demo notebook. |
+| **Nyong Godwill Nkwain** | **Agent Core & Tools**: Built the ReAct loop, integrated Tavily Search discovery, and implemented the Email/LinkedIn tools, Tavily Search Tool, and survey tool, Documentation |
+|
+| **Mohamed Alpha** | **Verification & Testing**: Developed `groundedness.py`, schema design, Implemented MongoDB Atlas connection, and vector indexing, Testing, Issues creation and management |
 
 ---
 
@@ -142,4 +141,4 @@ We implemented a **Semantic Chunking** strategy for alumni profiles.
 
 - **LangChain Documentation**: Used for Tool and Agent abstractions.
 - **MongoDB Atlas Vector Search**: Used for storing embeddings.
-- **Google Custom Search API**: Used for the discovery workflow.
+- **Tavily Search API**: Used for the discovery workflow.
