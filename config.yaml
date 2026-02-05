@@ -1,0 +1,68 @@
+# Configuration for Alumni RAG Agent
+
+# MongoDB Atlas
+mongodb:
+  uri: ${MONGODB_URI}
+  database: alumni_db
+  collections:
+    profiles: alumni_profiles
+    vectors: alumni_vectors
+    interactions: interactions
+  vector_index:
+    name: alumni_vector_index
+    dimensions: 1536
+    similarity: cosine
+
+# OpenAI
+openai:
+  api_key: ${OPENAI_API_KEY}
+  embedding_model: text-embedding-3-small
+  chat_model: gpt-4
+  temperature: 0
+
+# LangSmith Tracing
+langsmith:
+  enabled: true
+  api_key: ${LANGCHAIN_API_KEY}
+  project: alumni-rag-agent-hw2
+
+# Email Configuration
+email:
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  smtp_user: ${SMTP_USER}
+  smtp_password: ${SMTP_PASSWORD}
+  from_email: alumni@cmu.africa.edu
+  dry_run: true
+
+# LinkedIn Scraping
+linkedin:
+  rate_limit_seconds: 30
+  max_profiles_per_batch: 10
+
+# Agent Configuration
+agent:
+  max_iterations: 5
+  verification:
+    high_confidence: 0.9
+    medium_confidence: 0.7
+    low_confidence: 0.5
+  privacy:
+    max_contacts_per_month: 2
+    cooling_off_days: 7
+
+# Chunking Configuration
+chunking:
+  profile:
+    strategy: semantic
+    max_chunk_size: 1000
+    overlap: 100
+  interaction:
+    strategy: sliding_window
+    window_size: 500
+    stride: 400
+
+# Logging
+logging:
+  level: INFO
+  file: logs/implementation_trace.log
