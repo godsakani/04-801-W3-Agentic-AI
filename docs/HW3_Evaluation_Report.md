@@ -54,6 +54,55 @@ The system evolved into a **structured role-separated architecture** (Option B) 
 
 ---
 
+## Annotated Execution Trace
+
+Below is an annotated excerpt from **Session 1** (query: *"Tell me about alumni working in fintech"*), showing the Planner → Executor → Critic loop with memory operations. Full traces are in `notebooks/hw3_agent_execute.ipynb`.
+
+```
+[11:55:28] INFO: Query: Tell me about alumni working in fintech
+[11:55:28] INFO: [MEMORY READ] Loaded 0 recent sessions              ← Memory read at start (no prior sessions)
+[11:55:28] INFO: [MEMORY READ] Found 0 similar past tasks            ← Task history search (empty)
+[11:55:28] INFO: [MEMORY PRUNE] No sessions to prune                 ← Prune policy: nothing >30 days
+[11:55:28] INFO: [ORCHESTRATOR] Phase 0: Initial retrieval            ← Executor retrieves from vector store
+[11:55:30] INFO: [ORCHESTRATOR] === Iteration 1/5 ===
+[11:55:33] INFO: [PLANNER] Reasoning: Based on the current alumni     ← Planner decides: no fintech alumni
+                data, there is no specific information...               found → give FINAL_ANSWER
+[11:55:33] INFO: [ORCHESTRATOR] Planner decided: FINAL_ANSWER
+[11:55:33] INFO: [ORCHESTRATOR] Critic: continue=False,               ← Critic agrees: high confidence,
+                confidence=high, rec=proceed                            no need for more iterations
+[11:55:34] INFO: [ORCHESTRATOR] Response generated (212 chars)
+[11:55:34] INFO: [ORCHESTRATOR] Running final groundedness verification
+[11:55:37] INFO: [MEMORY WRITE] Session 2c83b9f4 saved:              ← Memory write: session persisted
+                query='Tell me about alumni...', groundedness=1.0       to MongoDB for future reference
+[11:55:37] INFO: Response generated with groundedness score: 1.00
+```
+
+**Trace walkthrough:**
+
+| Step | Phase | Role | What Happened |
+|------|-------|------|---------------|
+| 1 | MEMORY_READ | Orchestrator | Loaded 0 prior sessions from MongoDB — first interaction |
+| 2 | RETRIEVE | Executor | Retrieved 5 documents from vector store via similarity search |
+| 3 | PLAN | Planner | LLM analyzed context, found no fintech alumni → decided FINAL_ANSWER |
+| 4 | CRITIQUE | Critic | Evaluated: confidence=high, groundedness=0.0 (no claims to verify), rec=proceed |
+| 5 | VERIFY | Critic | Final groundedness verification: **1.0** (response is honest about missing data) |
+| 6 | MEMORY_WRITE | Orchestrator | Session `2c83b9f4` saved to MongoDB with query, tools, and score |
+
+**Adaptive control example** (from Session 2 — *"Send a check-in email to the fintech alumni"*):
+
+```
+[12:11:03] INFO: [ORCHESTRATOR] Planner decided: TOOL_CALL → email_sender
+[12:11:03] WARN: [EXECUTOR] Prerequisite check FAILED for email_sender:   ← TOOL_BLOCKED
+              Missing required parameter 'personalization'
+[12:11:04] INFO: [CRITIC] ADAPT: TOOL_BLOCKED -> RE_PLAN with more context ← Adaptive: re-plan
+[12:11:06] INFO: [ORCHESTRATOR] Planner decided: TOOL_CALL → email_sender  ← Still blocked (x3)
+[12:11:13] INFO: [ORCHESTRATOR] Planner decided: FINAL_ANSWER              ← Falls back to draft
+```
+
+This demonstrates the **Observe → Reason → Decide → Act → Evaluate → Update** loop, with the Critic triggering adaptive `RE_PLAN` when the Executor blocks a tool call.
+
+---
+
 ## B. Memory Design Rationale
 
 ### Why MongoDB?
@@ -94,44 +143,72 @@ We already used MongoDB Atlas for the vector store, so reusing the same connecti
 
 ### Results Table
 
-| # | Test Name | Query | Groundedness | Tool Acc. | Efficiency | Completion | Pass? |
-|---|-----------|-------|-------------|-----------|------------|------------|-------|
-| 1 | Alumni Info Retrieval | "Tell me about alumni working in fintech" | ≥0.7 | 1.0 | ≥0.6 | 1.0 | ✅ |
-| 2 | Email Outreach | "Send a check-in email to our alumni" | ≥0.5 | 1.0 | ≥0.4 | 1.0 | ✅ |
-| 3 | LinkedIn Check | "Check LinkedIn profile for career updates" | ≥0.5 | 1.0 | ≥0.4 | 1.0 | ✅ |
-| 4 | Survey Distribution | "Send a career update survey" | ≥0.5 | 1.0 | ≥0.4 | 1.0 | ✅ |
-| 5 | Vague Request (Failure) | "Email someone in tech" | ≥0.3 | 0.0 | ≤0.4 | 0.0 | ✅* |
+| # | Test Name | Groundedness | Tool Acc. | Efficiency | Completion | Iterations | Pass? |
+|---|-----------|:------------:|:---------:|:----------:|:----------:|:----------:|:-----:|
+| 1 | Alumni Info Retrieval | **1.00** | 1.0 | 0.80 | 1.0 | 1 | ✅ PASS |
+| 2 | Email Outreach | **0.11** | 0.0 | 0.00 | 1.0 | 5 | ❌ FAIL |
+| 3 | LinkedIn Profile Check | **1.00** | 1.0 | 0.00 | 1.0 | 5 | ✅ PASS |
+| 4 | Survey Distribution | **0.50** | 1.0 | 0.00 | 1.0 | 5 | ✅ PASS |
+| 5 | Vague Request (Failure) | **1.00** | 0.0 | 0.80 | 1.0 | 1 | ❌ FAIL |
 
-*\*Test 5 is an intentional failure case — "pass" means the system correctly identified it couldn't proceed.*
+### Aggregate Statistics
 
-> **Note:** Exact numeric values will be populated when the notebook is executed. The table above shows expected ranges based on testing.
+| Metric | Value |
+|--------|-------|
+| Total tests | 5 |
+| Pass rate | **60%** |
+| Avg groundedness | **0.72** |
+| Avg tool accuracy | **0.60** |
+| Avg efficiency | **0.32** |
+| Avg task completion | **1.00** |
+
+**Key observations:**
+- **Test 1** (Alumni Info Retrieval): 1.00 groundedness in 1 iteration — the ideal case. Agent honestly reports no fintech alumni found.
+- **Test 2** (Email Outreach): Fails because `email_sender` is repeatedly blocked by missing `personalization` parameter. The adaptive control triggers RE_PLAN 5 times before escalating.
+- **Test 3 & 4** pass on tool accuracy but use all 5 iterations due to low intermediate groundedness triggering RE_RETRIEVE cycles.
+- **Test 5** is an intentional failure case — the vague query *"Email someone in tech"* correctly fails tool accuracy (agent doesn't call `email_sender`) but achieves 1.00 groundedness because the response is honest.
 
 ---
 
-## D. Failure Case Deep Dive — Test 5: "Email someone in tech"
+## D. Failure Case Deep Dive
 
-### What Happened
+### Test 2: "Send a check-in email to our alumni in the database"
 
-The agent received a vague query: *"Email someone in tech."* The PlannerNode, seeing alumni context from retrieval, decided to call `email_sender`. However, the ExecutorNode's prerequisite validation blocked the call because no specific `recipient_email` was provided—the query didn't name a specific alumni.
+**What Happened:**
+The PlannerNode correctly identified `email_sender` as the right tool and attempted to call it 5 times across 5 iterations. Each time, the ExecutorNode's prerequisite validation blocked the call because the `personalization` parameter was missing — the Planner only supplied `recipient_email` and `template`.
 
-### Why It Happened
+**Why It Happened:**
+The `TOOL_PREREQUISITES` for `email_sender` require three parameters (`recipient_email`, `template`, `personalization`), but the LLM consistently omits `personalization` because the query doesn't explicitly mention it. The Critic's RE_PLAN feedback adds context about the missing parameter, but the Planner's structured output schema doesn't naturally produce it.
 
-The LLM's tool-calling mechanism is optimistic—it tries to call tools even with incomplete information. Without the prerequisite validation layer, the agent would have hallucinated an email address or used a placeholder, leading to silent failure.
+**Root Cause:**
+The `personalization` field (e.g., *"Congratulations on your new role at..."*) requires the Planner to synthesize information from retrieved alumni context into a custom message — a task the current prompt doesn't explicitly guide.
 
-### How We Fixed It
+**Impact:** Groundedness = 0.11 (the final fallback response drafts an email template instead of sending one), Tool Accuracy = 0.0.
+
+---
+
+### Test 5: "Email someone in tech"
+
+**What Happened:**
+The agent received a vague query: *"Email someone in tech."* The PlannerNode, seeing alumni context from retrieval, decided to give a FINAL_ANSWER listing tech-related alumni rather than attempting to call `email_sender`. This is arguably correct behavior (asking for clarification), but the expected tool was `email_sender`, so Tool Accuracy = 0.0.
+
+**Why It Happened:**
+The LLM has learned from prior session memory (where `email_sender` was repeatedly blocked) that calling the tool without specific information will fail. The Planner adapts by providing a helpful response instead.
+
+**How We Fixed It (for both cases):**
 
 The `TOOL_PREREQUISITES` schema in `ExecutorNode` defines required fields per tool:
-- `email_sender` requires `recipient_email` matching a valid email pattern AND retrieved alumni context
-- `survey_tool` requires `alumni_id` AND retrieved context
+- `email_sender` requires `recipient_email`, `template`, AND `personalization`
+- `survey_tool` requires `survey_type` AND `alumni_id`
 
 When validation fails, the ExecutorNode:
-1. Logs the block reason
+1. Logs the block reason with the specific missing parameter
 2. Performs a fallback retrieval to enrich context
 3. Returns `ExecutionResult(success=False, error="TOOL_BLOCKED: ...")`
 
-The CriticNode then detects the failure and recommends `re_plan`, continuing the loop.
+The CriticNode detects the failure and recommends `re_plan`, continuing the loop.
 
-### What Improved
+**What Improved:**
 
 | Metric | Before (no validation) | After (with validation) |
 |--------|----------------------|------------------------|
@@ -139,6 +216,7 @@ The CriticNode then detects the failure and recommends `re_plan`, continuing the
 | Silent failures | Common | Caught and logged |
 | User feedback | None | Agent asks for clarification |
 | Trace visibility | Opaque | Clear TOOL_BLOCKED in trace |
+| Cross-session learning | None | Agent remembers past failures |
 
 ---
 
@@ -160,4 +238,4 @@ The CriticNode then detects the failure and recommends `re_plan`, continuing the
 
 **What fails first: Audit trail and data governance.** Our current trace captures execution steps but lacks: (1) immutable audit logs, (2) data retention compliance (e.g., GDPR right-to-erasure conflicts with our pruning policy), (3) model versioning and reproducibility.
 
-**Mitigation:** Replace MongoDB memory with an append-only audit log (e.g., AWS QLDB), implement role-based access control on memory queries, add data classification tags to prevent PII leakage through memory context injection, and version-pin the LLM model (currently using `gpt-4o-2024-08-06` which is at least pinned).
+**Mitigation:** Replace MongoDB memory with an append-only audit log (e.g., AWS QLDB), implement role-based access control on memory queries, add data classification tags to prevent PII leakage through memory context injection, and version-pin the LLM model (currently using `gpt-mini-4o` which is at least pinned).
