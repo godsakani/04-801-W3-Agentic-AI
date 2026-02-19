@@ -52,11 +52,11 @@ class AlumniAgent:
         
         # Initialize Retrieval Module
         self.retrieval = AlumniVectorStore()
-        logger.info("✓ Retrieval module initialized")
+        logger.info("Retrieval module initialized Successfully!")
         
         # Initialize Persistent Memory
         self.memory = PersistentMemory()
-        logger.info("✓ Persistent memory initialized")
+        logger.info("Persistent memory initialized Successfully!")
         
         # Initialize Tools
         self.tools = {
@@ -65,11 +65,11 @@ class AlumniAgent:
             "survey_tool": create_survey_tool(),
             "linkedin_discovery": create_tavily_tool()
         }
-        logger.info("✓ Tools initialized: email_sender, linkedin_scraper, survey_tool, linkedin_discovery")
+        logger.info("Tools initialized: email_sender, linkedin_scraper, survey_tool, linkedin_discovery Successfully!")
         
         # Initialize Verification Module
         self.verifier = GroundednessScorer()
-        logger.info("✓ Verification module initialized")
+        logger.info("Verification module initialized Successfully!")
         
         # Create ReAct Agent with memory
         self.react_agent = ReActAgent(
@@ -78,7 +78,7 @@ class AlumniAgent:
             verify_fn=self.verifier.calculate_groundedness,
             memory=self.memory
         )
-        logger.info("✓ ReAct agent initialized with role separation + persistent memory")
+        logger.info("ReAct agent initialized with role separation + persistent memory Successfully!")
         logger.info("Alumni RAG Agent ready!")
     
     def ingest_alumni(self, profiles: List[dict]) -> int:
@@ -165,7 +165,7 @@ class AlumniAgent:
                 
                 # Step 3: Ingest into vector store
                 chunks = self.retrieval.ingest_profile(alumni_profile)
-                logger.info(f"  ✓ Ingested {chunks} chunks for {alumni_profile['name']}")
+                logger.info(f"Ingested {chunks} chunks for {alumni_profile['name']} Successfully!")
                 
                 ingested_profiles.append(alumni_profile)
                 
@@ -173,7 +173,7 @@ class AlumniAgent:
                 if scrape_result.get("changes"):
                     logger.info(f"  📢 Detected changes: {scrape_result['changes']}")
             else:
-                logger.warning(f"  ✗ Failed to scrape: {scrape_result.get('error')}")
+                logger.warning(f"Failed to scrape: {scrape_result.get('error')}")
         
         logger.info(f"Completed: Ingested {len(ingested_profiles)} profiles from LinkedIn")
         return ingested_profiles
@@ -267,7 +267,7 @@ Ensure valid JSON output.
             for profile in extracted_profiles:
                 # Ingest into vector store
                 chunks = self.retrieval.ingest_profile(profile)
-                logger.info(f"  ✓ Ingested {chunks} chunks for {profile['name']}")
+                logger.info(f"Ingested {chunks} chunks for {profile['name']} Successfully!")
                 ingested_profiles.append(profile)
                 
         except Exception as e:

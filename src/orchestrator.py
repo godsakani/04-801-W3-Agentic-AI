@@ -58,7 +58,7 @@ class ReActAgent:
         
         # Initialize LLM
         self.llm = ChatOpenAI(
-            model="gpt-4o-2024-08-06",
+            model="gpt-4.1-mini",
             temperature=0,
             base_url='https://ai-gateway.andrew.cmu.edu/',
             openai_api_key=os.environ.get("OPENAI_API_KEY")

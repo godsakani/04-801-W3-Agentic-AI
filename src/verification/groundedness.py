@@ -47,7 +47,7 @@ class GroundednessScorer:
     
     def __init__(self, openai_api_key: str = None):
         self.llm = ChatOpenAI(
-            model="gpt-4o-2024-08-06",
+            model="gpt-4.1-mini",
             temperature=0,
             api_key=openai_api_key or os.environ.get("OPENAI_API_KEY"),
             base_url="https://ai-gateway.andrew.cmu.edu/"

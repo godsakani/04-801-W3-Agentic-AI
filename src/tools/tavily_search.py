@@ -10,7 +10,7 @@ from typing import List
 
 # Initialize the base Tavily tool
 tavily_wrapper = TavilySearchResults(
-    max_results=5,
+    max_results=10,
     include_answer=True,
     include_raw_content=True,
     include_images=False,  # Images likely not needed for text profiling
