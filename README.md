@@ -20,10 +20,10 @@ The system implements a **ReAct (Reason+Act)** loop with role-separated nodes:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     ORCHESTRATOR (ReActAgent)                │
+│                     ORCHESTRATOR (ReActAgent)               │
 │  ┌───────────┐    ┌───────────┐    ┌───────────┐            │
 │  │  PLANNER  │ →  │ EXECUTOR  │ →  │  CRITIC   │ → (loop)   │
-│  │  (Plan)   │    │  (Act)    │    │ (Evaluate) │            │
+│  │  (Plan)   │    │  (Act)    │    │ (Evaluate)│            │
 │  └───────────┘    └───────────┘    └───────────┘            │
 └─────────────────────────────────────────────────────────────┘
          │                │                │
@@ -42,10 +42,10 @@ The system implements a **ReAct (Reason+Act)** loop with role-separated nodes:
 
 | Tool | Status | Description |
 |------|--------|-------------|
-| **Tavily Search** | ✅ Active | Alumni discovery via Tavily API |
-| **Email Sender** | ✅ Active | Email delivery with prerequisite validation |
-| **LinkedIn Tool** | ✅ Active | Profile data formatting from search results |
-| **Survey Tool** | ✅ Active | Career update survey generation |
+| **Tavily Search** | Active | Alumni discovery via Tavily API |
+| **Email Sender** | Active | Email delivery with prerequisite validation |
+| **LinkedIn Tool** | Active | Profile data formatting from search results |
+| **Survey Tool** | Active | Career update survey generation |
 
 ### Role Separation
 
@@ -195,11 +195,11 @@ The evaluation framework runs 5 structured test cases:
 
 | Test | Groundedness | Tool Accuracy | Efficiency | Pass/Fail |
 |------|:-----------:|:-------------:|:----------:|:---------:|
-| Alumni Info Retrieval | 1.00 | 1.0 | 0.80 | ✅ PASS |
-| Email Outreach | 0.11 | 0.0 | 0.00 | ❌ FAIL |
-| LinkedIn Profile Check | 1.00 | 1.0 | 0.00 | ✅ PASS |
-| Survey Distribution | 0.50 | 1.0 | 0.00 | ✅ PASS |
-| Vague Request (Failure) | 1.00 | 0.0 | 0.80 | ❌ FAIL |
+| Alumni Info Retrieval | 1.00 | 1.0 | 0.80 | PASS |
+| Email Outreach | 0.11 | 0.0 | 0.00 | FAIL |
+| LinkedIn Profile Check | 1.00 | 1.0 | 0.00 | PASS |
+| Survey Distribution | 0.50 | 1.0 | 0.00 | PASS |
+| Vague Request (Failure) | 1.00 | 0.0 | 0.80 | FAIL |
 
 **Aggregate**: 60% pass rate · 0.72 avg groundedness · 1.00 task completion
 
