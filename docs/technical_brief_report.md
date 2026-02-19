@@ -21,7 +21,7 @@ Maintain meaningful relationships with CMU Africa graduates by tracking their ca
 1. **Retrieval Module (`src/retrieval`)**: MongoDB Atlas Vector Search for storing and retrieving alumni context using semantic chunking.
 2. **Tool-Calling Module (`src/tools`)**: A suite of tools for external actions, including LinkedIn scraping, email automation, and surveys.
 3. **Verification Module (`src/verification`)**: A groundedness scorer that evaluates agent responses against retrieved evidence to prevent hallucinations.
-4. **Agent Core (`src/agent.py`)**: A ReAct (Reason+Act) loop that orchestrates the entire process.
+4. **Agent Core (`src/agent.py`)**: A ReAct (Reason+Act) loop that orchestrates the entire process, using **native LLM tool binding** (`bind_tools`) for reliable decision-making and **prerequisite validation** to prevent invalid tool calls.
 
 ---
 
@@ -47,7 +47,7 @@ Maintain meaningful relationships with CMU Africa graduates by tracking their ca
 **Design decisions**:
 - **Template System**: Uses pre-defined templates (e.g., `congratulations_promotion`, `general_check_in`) to ensure professional communication standards.
 - **Production SMTP**: Implements secure `smtplib` connection (TLS) to send actual emails using credentials from `.env`.
-- **Context-Aware Extraction**: Uses a robust LLM-based extraction logic that passes the full Retrieval Context to the prompt, ensuring the correct recipient email is extracted (solving the "empty parameter" issue).
+- **Context-Aware Extraction**: Tools are **bound directly to the LLM** via `bind_tools()`, enabling OpenAI's native function-calling to extract parameters (email, template, personalization) in a single structured call. A **prerequisite validation layer** (`validate_tool_params()`) checks required fields and value formats before execution, preventing empty or invalid parameters.
 
 ### 2.3 Survey Tool
 
@@ -57,9 +57,6 @@ Maintain meaningful relationships with CMU Africa graduates by tracking their ca
 
 **Design decisions**:
 - **Dynamic Generation**: The agent selects the appropriate survey type (Career Update vs. Program Feedback) based on the user's intent.
-
-    
-    - **Dynamic Generation**: The agent selects the appropriate survey type (Career Update vs. Program Feedback) based on the user's intent.
 
 ### 2.4 Tool Workflow Concepts
 
@@ -87,7 +84,23 @@ Maintain meaningful relationships with CMU Africa graduates by tracking their ca
 3.  **Structuring**: Instead of just getting URLs, the tool retrieves rich text snippets. The Agent sends these snippets to the LLM with a strictly typed JSON prompt to **extract** structured profile data (Name, Degree, Job) directly from the search context.
 4.  **Ingestion**: The structured JSON profiles are validated and directly ingested into the Vector Store, bypassing the need for a separate scraping step.
 
-### 2.5 Observability & Tracing
+### 2.5 Tool Binding, Validation & Fallback Mechanisms
+
+**Purpose**: Ensure reliable tool execution by binding tools natively to the LLM, validating parameters before execution, and recovering gracefully from failures.
+
+**Design decisions**:
+- **Native Tool Binding (`bind_tools`)**: Instead of asking the LLM to output a `DECISION:` keyword and parsing the response with string splitting, we use `llm.bind_tools()` to register tool schemas (Pydantic `args_schema` from each tool) directly with the OpenAI API. The LLM returns structured `tool_calls` with the tool name and parameters already extracted — eliminating the need for a second LLM call for parameter extraction and removing fragile regex/string parsing.
+- **Prerequisite Validation Layer**: Before executing any tool, a `validate_tool_params()` function checks:
+  1. **Required fields** are present and non-empty (e.g., `recipient_email`, `template`, `personalization` for email)
+  2. **Field-level validators** ensure correctness (e.g., email contains `@`, template name is valid)
+  3. **Context dependency** — tools like `email_sender` require retrieved alumni context before execution
+- **Fallback Mechanisms**: When validation fails or a tool execution errors out, the agent:
+  1. Logs a clear `TOOL_BLOCKED` warning with the specific reason
+  2. Automatically falls back to retrieval to gather more context
+  3. Re-tries the tool call on the next iteration with enriched context
+  4. Caps retries at `MAX_RETRIES=2` to prevent infinite loops
+
+### 2.6 Observability & Tracing
 To ensure robustness and debug complexity, the system implements dual-layer observability:
 
 1.  **Local Execution Traces**:
@@ -98,7 +111,7 @@ To ensure robustness and debug complexity, the system implements dual-layer obse
     - For deep debugging and persistence, all runs are automatically streamed to **LangSmith** (via `LANGCHAIN_TRACING_V2=true`).
     - **Export Capability**: Traces can be exported from the LangSmith dashboard as **CSV** or **JSONL** files for external analysis or compliance, enabling the creation of "Log Files" without custom code.
 
-### 2.6 Chunking Strategy
+### 2.7 Chunking Strategy
 
 We implemented a **Semantic Chunking** strategy for alumni profiles.
 
